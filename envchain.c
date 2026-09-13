@@ -97,7 +97,11 @@ strsep(char **stringp, const char *delim)
 #endif /* _WIN32 */
 
 
-static const char version[] = "1.1.0";
+#ifndef ENVCHAIN_VERSION
+#define ENVCHAIN_VERSION "1.1.0"
+#endif
+
+static const char version[] = ENVCHAIN_VERSION;
 const char *envchain_name;
 
 /* for help */

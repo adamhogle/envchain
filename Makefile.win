@@ -8,7 +8,8 @@
 
 CC      = cl
 LINK    = link
-CFLAGS  = /nologo /W3 /O2 /MT /D_CRT_SECURE_NO_WARNINGS
+VERSION = 1.1.0
+CFLAGS  = /nologo /W3 /O2 /MT /D_CRT_SECURE_NO_WARNINGS /DENVCHAIN_VERSION=\"$(VERSION)\"
 LDFLAGS = /nologo
 LIBS    = advapi32.lib
 

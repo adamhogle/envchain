@@ -1,8 +1,10 @@
 UNAME = $(shell uname 2>/dev/null || echo Windows_NT)
 IS_WSL = $(shell sh -c 'uname -r 2>/dev/null | grep -qi microsoft && echo 1 || echo 0')
 ENVCHAIN_FORCE_WSL ?= 0
+VERSION ?= 1.1.0
 
 CFLAGS += -Wall -Wextra
+CPPFLAGS += -DENVCHAIN_VERSION=\"$(VERSION)\"
 
 ifeq ($(OS),Windows_NT)
   # Windows build (MinGW / MSYS2)

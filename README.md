@@ -78,6 +78,19 @@ nmake /f Makefile.win install INSTALLDIR=C:\Tools\bin
 brew install envchain
 ```
 
+### Prebuilt releases (this fork)
+
+Tag releases with SemVer plus build metadata, for example:
+
+```
+v1.1.0+adamhogle.1
+```
+
+The release workflow publishes:
+
+- `envchain-windows-x86_64-<version>.exe`
+- `envchain_<version>_amd64.deb` (Debian 13 / trixie target)
+
 ## Usage
 
 ### Saving variables
