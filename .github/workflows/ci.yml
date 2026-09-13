@@ -70,10 +70,11 @@ jobs:
           nmake /f Makefile.win clean
           nmake /f Makefile.win
       - name: Smoke test Windows credential flow
-        shell: powershell
+        shell: cmd
         run: |
-          $null = "test-secret" | .\envchain.exe --set ci AWS_SECRET_ACCESS_KEY
-          .\envchain.exe --list | Select-String "^ci$"
-          $result = .\envchain.exe ci cmd /c echo %AWS_SECRET_ACCESS_KEY%
-          if ($result.Trim() -ne "test-secret") { throw "unexpected value: $result" }
+          echo test-secret| .\envchain.exe --set ci AWS_SECRET_ACCESS_KEY
+          .\envchain.exe --list | findstr /r "^ci$"
+          .\envchain.exe ci cmd /c echo %AWS_SECRET_ACCESS_KEY% > value.txt
+          set /p RESULT=<value.txt
+          if not "%RESULT%"=="test-secret" exit /b 1
           .\envchain.exe --unset ci AWS_SECRET_ACCESS_KEY
