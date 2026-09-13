@@ -1,4 +1,4 @@
-# envchain - set environment variables with macOS keychain or D-Bus secret service
+# envchain - set environment variables with macOS keychain, D-Bus secret service, or Windows Credential Manager
 
 ## What?
 
@@ -11,17 +11,18 @@ Putting these secrets on disk in this way is a grave risk.
 
 `envchain` allows you to secure credential environment variables to your secure vault, and set to environment variables only when you called explicitly.
 
-Currently, `envchain` supports macOS keychain and D-Bus secret service (gnome-keyring) as a vault.
+`envchain` supports macOS Keychain, D-Bus Secret Service (gnome-keyring), and **Windows Credential Manager** as a vault.
 
 Don't give any credentials implicitly!
 
-## Requirement (macOS)
+## Requirements
 
-- macOS
-  - Confirmed to work on OS X 10.11 (El Capitan), macOS 10.12 (Sierra).
-  - OS X 10.7 (Lion) or later is required, but not confirmed
+### macOS
 
-## Requirement (Linux)
+- macOS 10.7 (Lion) or later
+  - Confirmed to work on OS X 10.11 (El Capitan), macOS 10.12 (Sierra)
+
+### Linux
 
 - readline
 - libsecret
@@ -29,9 +30,15 @@ Don't give any credentials implicitly!
     - GNOME keyring
     - KeePassXC
 
+### Windows
+
+- Windows Vista or later (Windows Credential Manager is built-in)
+- **MinGW/MSYS2** build: GCC toolchain (e.g. `pacman -S mingw-w64-x86_64-gcc`)
+- **MSVC** build: Visual Studio 2015 or later
+
 ## Installation
 
-### From Source
+### From Source (macOS / Linux)
 
 ```
 $ make
@@ -41,7 +48,25 @@ $ sudo make install
 $ cp ./envchain ~/bin/
 ```
 
-### Homebrew (OS X)
+### From Source (Windows — MinGW/MSYS2)
+
+Open an MSYS2 MinGW 64-bit shell:
+
+```
+$ make
+$ cp envchain.exe /usr/local/bin/    # or any directory on PATH
+```
+
+### From Source (Windows — MSVC)
+
+Open a Visual Studio Developer Command Prompt:
+
+```
+nmake /f Makefile.win
+nmake /f Makefile.win install INSTALLDIR=C:\Tools\bin
+```
+
+### Homebrew (macOS)
 
 ```
 brew install envchain
@@ -73,7 +98,7 @@ $ envchain --set hubot HUBOT_HIPCHAT_PASSWORD
 hubot.HUBOT_HIPCHAT_PASSWORD: xxxx
 ```
 
-These will all appear as application passwords with `envchain-NAMESPACE` in the data store (Keychain in macOS, gnome-keyring in common Linux distros).
+On Windows, credentials are stored in Windows Credential Manager as generic credentials with target names of the form `envchain-NAMESPACE/KEY`. You can view or delete them through **Control Panel → Credential Manager → Windows Credentials**.
 
 ### Execute commands with defined variables
 
@@ -122,19 +147,24 @@ Do not echo user input
 $ envchain --set --noecho foo BAR
 foo.BAR (noecho):
 ```
+
 #### `--require-passphrase`
 
-Always ask for keychain passphrase
-```
-$ envchain --set --require-passphrase name
-```
+Always ask for keychain passphrase before reading secrets (macOS only).
+
+> **Note:** `--require-passphrase` is not supported on Linux or Windows. The flag is accepted but silently ignored on those platforms.
 
 #### `--no-require-passphrase`
 
-Do not ask for keychain passphrase
-```
-$ envchain --set --no-require-passphrase name
-```
+Do not ask for keychain passphrase (macOS only).
+
+## Platform notes
+
+| Feature | macOS | Linux | Windows |
+|---|---|---|---|
+| Credential store | Keychain | D-Bus Secret Service | Credential Manager |
+| `--require-passphrase` | ✅ | ❌ | ❌ |
+| `--noecho` | ✅ | ✅ | ✅ |
 
 ## Sponsor
 

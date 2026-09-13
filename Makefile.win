@@ -1,0 +1,35 @@
+# Makefile.win — MSVC nmake build file for envchain on Windows
+#
+# Usage (from a Visual Studio Developer Command Prompt):
+#   nmake /f Makefile.win
+#   nmake /f Makefile.win install INSTALLDIR=C:\Tools\bin
+#
+# Requirements: Visual Studio 2015 or later
+
+CC      = cl
+LINK    = link
+CFLAGS  = /nologo /W3 /O2 /MT /D_CRT_SECURE_NO_WARNINGS
+LDFLAGS = /nologo
+LIBS    = advapi32.lib
+
+OBJS    = envchain.obj envchain_windows.obj
+EXE     = envchain.exe
+
+INSTALLDIR = C:\Windows\System32
+
+all: $(EXE)
+
+$(EXE): $(OBJS)
+	$(LINK) $(LDFLAGS) /OUT:$(EXE) $(OBJS) $(LIBS)
+
+envchain.obj: envchain.c envchain.h
+	$(CC) $(CFLAGS) /c /Fo$@ envchain.c
+
+envchain_windows.obj: envchain_windows.c envchain.h
+	$(CC) $(CFLAGS) /c /Fo$@ envchain_windows.c
+
+install: $(EXE)
+	copy /Y $(EXE) "$(INSTALLDIR)\$(EXE)"
+
+clean:
+	del /Q $(OBJS) $(EXE) 2>nul || exit 0

@@ -24,19 +24,75 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define _GNU_SOURCE
+#ifndef _WIN32
+#  define _GNU_SOURCE
+#endif
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <termios.h>
 #include <assert.h>
 #include <errno.h>
 
-#include <readline/readline.h>
+#ifdef _WIN32
+#  include <windows.h>
+#  include <io.h>
+#  include <process.h>
+#  include <stdarg.h>
+#else
+#  include <unistd.h>
+#  include <termios.h>
+#  include <readline/readline.h>
+#endif
 
 #include "envchain.h"
+
+/* ---- Windows compatibility shims ---- */
+
+#ifdef _WIN32
+
+/* asprintf: formatted string allocation */
+static int
+asprintf(char **strp, const char *fmt, ...)
+{
+  va_list ap;
+  int len;
+
+  va_start(ap, fmt);
+  len = _vscprintf(fmt, ap);
+  va_end(ap);
+
+  if (len < 0) return -1;
+  *strp = (char *)malloc((size_t)(len + 1));
+  if (*strp == NULL) return -1;
+
+  va_start(ap, fmt);
+  vsnprintf(*strp, (size_t)(len + 1), fmt, ap);
+  va_end(ap);
+
+  return len;
+}
+
+/* strsep: split string on delimiter, modifying in place */
+static char *
+strsep(char **stringp, const char *delim)
+{
+  char *start = *stringp;
+  char *p;
+
+  if (start == NULL) return NULL;
+
+  p = strpbrk(start, delim);
+  if (p != NULL) {
+    *p = '\0';
+    *stringp = p + 1;
+  } else {
+    *stringp = NULL;
+  }
+  return start;
+}
+
+#endif /* _WIN32 */
 
 
 static const char version[] = "1.1.0";
@@ -81,6 +137,41 @@ envchain_abort_with_help(void)
 char*
 envchain_noecho_read(char* prompt)
 {
+#ifdef _WIN32
+  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
+  DWORD orig_mode;
+
+  if (!GetConsoleMode(hStdin, &orig_mode)) {
+    fprintf(stderr, "--noecho (-n) requires stdin to be a terminal\n");
+    return NULL;
+  }
+
+  if (!SetConsoleMode(hStdin, orig_mode & ~ENABLE_ECHO_INPUT)) {
+    fprintf(stderr, "SetConsoleMode failed\n");
+    exit(10);
+  }
+
+  printf("%s (noecho):", prompt);
+  fflush(stdout);
+
+  char *buf = (char *)malloc(4096);
+  if (buf == NULL) { SetConsoleMode(hStdin, orig_mode); return NULL; }
+
+  if (fgets(buf, 4096, stdin) == NULL) {
+    SetConsoleMode(hStdin, orig_mode);
+    free(buf);
+    return NULL;
+  }
+
+  SetConsoleMode(hStdin, orig_mode);
+
+  size_t len = strlen(buf);
+  if (len > 0 && buf[len - 1] == '\n') buf[len - 1] = '\0';
+
+  printf("\n");
+  return buf;
+
+#else /* POSIX */
   struct termios term, term_orig;
   char* str = NULL;
   ssize_t len;
@@ -117,6 +208,7 @@ envchain_noecho_read(char* prompt)
   printf("\n");
 
   return str;
+#endif
 }
 
 
@@ -131,7 +223,20 @@ envchain_ask_value(const char* name, const char* key, int noecho)
   }
   else {
     printf("%s", prompt);
+#ifdef _WIN32
+    printf(": ");
+    fflush(stdout);
+    line = (char *)malloc(4096);
+    if (line != NULL && fgets(line, 4096, stdin) != NULL) {
+      size_t len = strlen(line);
+      if (len > 0 && line[len - 1] == '\n') line[len - 1] = '\0';
+    } else {
+      free(line);
+      line = NULL;
+    }
+#else
     line = readline(": ");
+#endif
   }
 
   free(prompt);
@@ -265,7 +370,11 @@ envchain_exec_value_callback(const char* key, const char* value, void *context)
 {
   (void)context; /* silence warning */
 
+#ifdef _WIN32
+  _putenv_s(key, value);
+#else
   setenv(key, value, 1);
+#endif
 }
 
 int
@@ -291,11 +400,21 @@ envchain_exec(int argc, const char **argv)
   args[len-1] = NULL;
   if (0 < argc) memcpy(args+1, argv, sizeof(char*) * argc);
 
+#ifdef _WIN32
+  int ret = _spawnvp(_P_WAIT, exe, (const char * const *)args);
+  free(args);
+  if (ret == -1) {
+    fprintf(stderr, "spawnvp failed: %s\n", strerror(errno));
+    return 1;
+  }
+  return ret;
+#else
   if (execvp(exe, args) < 0) {
     fprintf(stderr, "execvp failed: %s\n", strerror(errno));
     return 1;
   }
   return 0;
+#endif
 }
 
 /* entry point */
