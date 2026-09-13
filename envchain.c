@@ -401,13 +401,13 @@ envchain_exec(int argc, const char **argv)
   if (0 < argc) memcpy(args+1, argv, sizeof(char*) * argc);
 
 #ifdef _WIN32
-  int ret = _spawnvp(_P_WAIT, exe, (const char * const *)args);
+  intptr_t ret = _spawnvp(_P_WAIT, exe, (const char * const *)args);
   free(args);
   if (ret == -1) {
     fprintf(stderr, "spawnvp failed: %s\n", strerror(errno));
     return 1;
   }
-  return ret;
+  return (int)ret;
 #else
   if (execvp(exe, args) < 0) {
     fprintf(stderr, "execvp failed: %s\n", strerror(errno));
