@@ -42,7 +42,9 @@
 #else
 #  include <unistd.h>
 #  include <termios.h>
-#  include <readline/readline.h>
+#  ifndef ENVCHAIN_NO_READLINE
+#    include <readline/readline.h>
+#  endif
 #endif
 
 #include "envchain.h"
@@ -235,7 +237,20 @@ envchain_ask_value(const char* name, const char* key, int noecho)
       line = NULL;
     }
 #else
+#  ifdef ENVCHAIN_NO_READLINE
+    printf(": ");
+    fflush(stdout);
+    line = (char *)malloc(4096);
+    if (line != NULL && fgets(line, 4096, stdin) != NULL) {
+      size_t len = strlen(line);
+      if (len > 0 && line[len - 1] == '\n') line[len - 1] = '\0';
+    } else {
+      free(line);
+      line = NULL;
+    }
+#  else
     line = readline(": ");
+#  endif
 #endif
   }
 

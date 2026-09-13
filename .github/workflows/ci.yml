@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libsecret-1-dev libreadline-dev
+      - name: Build Linux target
+        run: |
+          make clean
+          make
+      - name: Smoke test binary
+        run: |
+          ./envchain 2>&1 | grep "Usage:"
+
+  wsl-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build forced WSL backend
+        run: |
+          make clean
+          make ENVCHAIN_FORCE_WSL=1
+      - name: Create fake envchain.exe bridge
+        run: |
+          cat > fake-envchain.exe <<'EOF'
+          #!/usr/bin/env sh
+          if [ "$1" = "--list" ] && [ "$2" = "--show-value" ]; then
+            if [ "$3" = "aws" ]; then
+              echo AWS_ACCESS_KEY_ID=test-key
+              echo AWS_SECRET_ACCESS_KEY=test-secret
+              exit 0
+            fi
+            exit 1
+          fi
+          if [ "$1" = "--list" ]; then
+            echo aws
+            exit 0
+          fi
+          if [ "$1" = "--set" ] || [ "$1" = "--unset" ]; then
+            exit 0
+          fi
+          exit 1
+          EOF
+          chmod +x fake-envchain.exe
+      - name: Smoke test WSL backend behavior
+        run: |
+          ENVCHAIN_WINDOWS_BIN=./fake-envchain.exe ./envchain --list | grep "^aws$"
+          ENVCHAIN_WINDOWS_BIN=./fake-envchain.exe ./envchain aws env | grep "^AWS_ACCESS_KEY_ID=test-key$"
+          ENVCHAIN_WINDOWS_BIN=./fake-envchain.exe ./envchain aws env | grep "^AWS_SECRET_ACCESS_KEY=test-secret$"
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Windows target
+        shell: cmd
+        run: |
+          nmake /f Makefile.win clean
+          nmake /f Makefile.win
+      - name: Smoke test Windows credential flow
+        shell: powershell
+        run: |
+          $null = "test-secret" | .\envchain.exe --set ci AWS_SECRET_ACCESS_KEY
+          .\envchain.exe --list | Select-String "^ci$"
+          $result = .\envchain.exe ci cmd /c echo %AWS_SECRET_ACCESS_KEY%
+          if ($result.Trim() -ne "test-secret") { throw "unexpected value: $result" }
+          .\envchain.exe --unset ci AWS_SECRET_ACCESS_KEY

@@ -30,6 +30,12 @@ Don't give any credentials implicitly!
     - GNOME keyring
     - KeePassXC
 
+### WSL (for Windows Credential Manager passthrough)
+
+- WSL with Windows interop enabled (`*.exe` invocations from Linux)
+- A Windows `envchain.exe` available on PATH in WSL (or configure path with `ENVCHAIN_WINDOWS_BIN`)
+- Build in WSL with `make` (auto-selects WSL backend in `Makefile`)
+
 ### Windows
 
 - Windows Vista or later (Windows Credential Manager is built-in)
@@ -119,6 +125,22 @@ $ envchain hubot env | grep HUBOT_
 HUBOT_HIPCHAT_PASSWORD: xxxx
 ```
 
+### Execute Linux commands in WSL with credentials from Windows Credential Manager
+
+In WSL, `envchain` can read secrets from Windows Credential Manager via Windows `envchain.exe`:
+
+```
+$ envchain aws env | grep AWS_
+AWS_ACCESS_KEY_ID=my-access-key
+AWS_SECRET_ACCESS_KEY=secret
+```
+
+If `envchain.exe` is not on PATH in WSL, set it explicitly:
+
+```
+$ ENVCHAIN_WINDOWS_BIN=/mnt/c/Users/<you>/bin/envchain.exe envchain aws env
+```
+
 You may specify multiple namespaces at once, with separating by commas:
 
 ```
@@ -165,6 +187,11 @@ Do not ask for keychain passphrase (macOS only).
 | Credential store | Keychain | D-Bus Secret Service | Credential Manager |
 | `--require-passphrase` | ✅ | ❌ | ❌ |
 | `--noecho` | ✅ | ✅ | ✅ |
+
+### WSL notes
+
+- `envchain` built in WSL delegates secret operations to Windows `envchain.exe`.
+- Use `ENVCHAIN_WINDOWS_BIN` when `envchain.exe` is not discoverable on WSL PATH.
 
 ## Sponsor
 
