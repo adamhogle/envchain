@@ -90,6 +90,9 @@ The release workflow publishes:
 
 - `envchain-windows-x86_64-<version>.exe`
 - `envchain_<version>_amd64.deb` (Debian 13 / trixie target)
+- `envchain_<version>.wsl_amd64.deb` (Debian 13 / trixie, built with `ENVCHAIN_FORCE_WSL=1`)
+
+The WSL package binary reports the `.wsl` suffixed version (for example `1.1.0+adamhogle.2.wsl`) so it is distinguishable from the normal Debian build.
 
 ## Usage
 

@@ -63,8 +63,35 @@ jobs:
           name: debian-asset
           path: dist/envchain_*.deb
 
+  debian-wsl-asset:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:trixie
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Debian build dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential pkg-config dpkg-dev
+      - name: Derive WSL release version
+        run: |
+          BASE_VERSION="${GITHUB_REF_NAME#v}"
+          echo "WSL_VERSION=${BASE_VERSION}.wsl" >> "$GITHUB_ENV"
+      - name: Build WSL backend binary
+        run: |
+          make clean
+          make ENVCHAIN_FORCE_WSL=1 VERSION="$WSL_VERSION"
+      - name: Build WSL Debian package
+        run: |
+          sh scripts/build-deb.sh "$WSL_VERSION"
+      - name: Upload WSL Debian asset artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-wsl-asset
+          path: dist/envchain_*.wsl_*.deb
+
   publish:
-    needs: [windows-asset, debian-asset]
+    needs: [windows-asset, debian-asset, debian-wsl-asset]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -77,3 +104,4 @@ jobs:
           files: |
             dist/windows-asset/*.exe
             dist/debian-asset/*.deb
+            dist/debian-wsl-asset/*.deb
